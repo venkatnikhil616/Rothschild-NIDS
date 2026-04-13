@@ -1,9 +1,16 @@
 # CORE
 flask
-numpy                                                   pandas
-# MACHINE LEARNING                                      scikit-learn                                            # DATABASE (ORM)                                        sqlalchemy                                              # HTTP REQUESTS (APIs, URL checks)
+numpy
+pandas
+# MACHINE LEARNING
+scikit-learn
+# DATABASE (ORM)
+sqlalchemy
+# HTTP REQUESTS (APIs, URL checks)
 requests
-# UTILITIES                                             python-dotenv
-# TESTING                                               pytest
+# UTILITIES
+python-dotenv
+# TESTING
+pytest
 # OPTIONAL (for better performance/logging)
 gunicorn
