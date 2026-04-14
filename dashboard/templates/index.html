@@ -224,7 +224,7 @@ function draw(){
 setInterval(draw,50);
 
 /* ALERT DATA */
-const alertsData = {{ alerts | tojson }};
+    const alertsData = {{ alerts | default([]) | tojson }};
 
 /* RADAR LOGIC */
 const radar = document.getElementById("radar-blips");
