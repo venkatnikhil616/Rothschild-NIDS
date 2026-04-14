@@ -1,85 +1,188 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>NIDS Dashboard</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<title>Rothschild NIDS | SOC Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- ✅ FIXED STATIC PATH -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
-    <style>
-        body {
-            color: white;
-            font-family: 'Segoe UI', sans-serif;
+<style>
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: #000;
+    color: white;
+    overflow-x: hidden;
+}
 
-            /* ✅ BACKGROUND IMAGE FIX */
-            background: url("/dashboard/static/bg.jpg") no-repeat center center fixed;
-            background-size: cover;
-        }
+/* MATRIX BACKGROUND */
+canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 0;
+}
 
-        .container {
-            max-width: 1100px;
-            margin: auto;
-            padding: 20px;
-        }
+/* RADAR BACKGROUND */
+.radar {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 500px;
+    height: 500px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    z-index: 0;
+    pointer-events: none;
+}
 
-        h1 {
-            text-align: center;
-            margin-bottom: 20px;
-        }
+/* RADAR SWEEP */
+.radar::before {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: conic-gradient(
+        rgba(0,255,255,0.4) 0deg,
+        rgba(0,255,255,0.1) 60deg,
+        transparent 120deg
+    );
+    animation: sweep 3s linear infinite;
+}
 
-        .card {
-            background: rgba(30, 41, 59, 0.85);
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.3);
-            animation: fadeIn 0.6s ease;
-        }
+/* RADAR CIRCLES */
+.radar::after {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 1px solid rgba(0,255,255,0.2);
+    box-shadow:
+        0 0 20px rgba(0,255,255,0.2),
+        inset 0 0 20px rgba(0,255,255,0.2);
+}
 
-        .log {
-            font-size: 13px;
-            border-bottom: 1px solid #334155;
-            padding: 6px 0;
-        }
+/* CONTENT ABOVE BACKGROUND */
+.header, .grid, .card {
+    position: relative;
+    z-index: 1;
+}
 
-        .safe { color: #22c55e; }
-        .attack { color: #ef4444; }
+/* HEADER */
+.header {
+    padding: 20px;
+    text-align: center;
+    font-size: 24px;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px #0ff;
+}
 
-        .badge {
-            padding: 3px 8px;
-            border-radius: 6px;
-            font-size: 11px;
-        }
+/* GRID */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    padding: 20px;
+}
 
-        .low { background: #22c55e; }
-        .medium { background: #f59e0b; }
-        .high { background: #ef4444; }
+/* CARDS */
+.card {
+    background: rgba(15, 23, 42, 0.85);
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 0 20px rgba(0,255,255,0.15);
+    backdrop-filter: blur(8px);
+    animation: fadeIn 0.6s ease;
+}
 
-        .refresh {
-            text-align: right;
-            font-size: 12px;
-            opacity: 0.7;
-        }
+/* STATS */
+.stat {
+    font-size: 28px;
+    font-weight: bold;
+}
 
-        /* ✅ FIXED MISSING BRACE */
-        @keyframes fadeIn {
-            from {opacity:0; transform:translateY(10px);}
-            to {opacity:1; transform:translateY(0);}
-        }
-    </style>
+.label {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+/* LOGS */
+.log {
+    font-size: 13px;
+    padding: 6px 0;
+    border-bottom: 1px solid #1e293b;
+}
+
+.safe { color: #22c55e; }
+.attack { color: #ef4444; }
+
+/* ALERT BADGES */
+.badge {
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+}
+
+.low { background: #22c55e; }
+.medium { background: #f59e0b; }
+.high { background: #ef4444; }
+
+/* ANIMATIONS */
+@keyframes fadeIn {
+    from {opacity:0; transform:translateY(10px);}
+    to {opacity:1; transform:translateY(0);}
+}
+
+@keyframes sweep {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+</style>
 </head>
+
 <body>
 
-<div class="container">
-    <h1>Rothschild NIDS Dashboard</h1>
+<!-- MATRIX -->
+<canvas id="matrix"></canvas>
 
-    <div class="refresh">Auto-refreshing every 5 seconds</div>
+<!-- RADAR -->
+<div class="radar"></div>
 
-    <!-- ALERTS -->
+<div class="header">
+🚀 Rothschild NIDS — SOC Dashboard
+</div>
+
+<!-- STATS -->
+<div class="grid">
     <div class="card">
-        <h2>🚨 Recent Alerts</h2>
+        <div class="stat">{{ stats.total if stats.total else 0 }}</div>
+        <div class="label">Total Traffic</div>
+    </div>
+
+    <div class="card">
+        <div class="stat">{{ stats.attacks if stats.attacks else 0 }}</div>
+        <div class="label">Detected Attacks</div>
+    </div>
+
+    <div class="card">
+        <div class="stat">{{ stats.normal if stats.normal else 0 }}</div>
+        <div class="label">Normal Traffic</div>
+    </div>
+
+    <div class="card">
+        <div class="stat">{{ stats.high if stats.high else 0 }}</div>
+        <div class="label">High Severity</div>
+    </div>
+</div>
+
+<!-- ALERTS + LOGS -->
+<div class="grid">
+    <div class="card">
+        <h3>🚨 Recent Alerts</h3>
+
         {% for alert in alerts %}
             <div class="log">
                 <span class="badge {{ alert.severity|lower }}">
@@ -91,13 +194,13 @@
                 <small>{{ alert.timestamp }}</small>
             </div>
         {% else %}
-            <p>No alerts yet</p>
+            <p>No alerts</p>
         {% endfor %}
     </div>
 
-    <!-- LOGS -->
     <div class="card">
-        <h2>📡 Network Logs</h2>
+        <h3>📡 Network Logs</h3>
+
         {% for log in logs %}
             <div class="log">
                 <span class="{% if log.attack_type == 'normal' %}safe{% else %}attack{% endif %}">
@@ -108,15 +211,45 @@
                 <small>{{ log.timestamp }}</small>
             </div>
         {% else %}
-            <p>No logs available</p>
+            <p>No logs</p>
         {% endfor %}
     </div>
 </div>
 
 <script>
-    setTimeout(() => {
-        window.location.reload();
-    }, 5000);
+// MATRIX EFFECT
+const canvas = document.getElementById("matrix");
+const ctx = canvas.getContext("2d");
+
+canvas.height = window.innerHeight;
+canvas.width = window.innerWidth;
+
+const letters = "01";
+const fontSize = 14;
+const columns = canvas.width / fontSize;
+
+const drops = [];
+for (let x = 0; x < columns; x++) drops[x] = 1;
+
+function draw() {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#0ff";
+    ctx.font = fontSize + "px monospace";
+
+    for (let i = 0; i < drops.length; i++) {
+        const text = letters.charAt(Math.floor(Math.random() * letters.length));
+        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.95)
+            drops[i] = 0;
+
+        drops[i]++;
+    }
+}
+
+setInterval(draw, 50);
 </script>
 
 </body>
