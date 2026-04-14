@@ -16,7 +16,7 @@ body {
     overflow-x: hidden;
 }
 
-/* MATRIX BACKGROUND */
+/* MATRIX */
 canvas {
     position: fixed;
     top: 0;
@@ -24,7 +24,7 @@ canvas {
     z-index: 0;
 }
 
-/* RADAR BACKGROUND */
+/* RADAR */
 .radar {
     position: fixed;
     top: 50%;
@@ -34,10 +34,9 @@ canvas {
     transform: translate(-50%, -50%);
     border-radius: 50%;
     z-index: 0;
-    pointer-events: none;
 }
 
-/* RADAR SWEEP */
+/* SWEEP */
 .radar::before {
     content: "";
     position: absolute;
@@ -45,14 +44,13 @@ canvas {
     height: 100%;
     border-radius: 50%;
     background: conic-gradient(
-        rgba(0,255,255,0.4) 0deg,
-        rgba(0,255,255,0.1) 60deg,
-        transparent 120deg
+        rgba(0,255,255,0.4),
+        transparent
     );
     animation: sweep 3s linear infinite;
 }
 
-/* RADAR CIRCLES */
+/* RINGS */
 .radar::after {
     content: "";
     position: absolute;
@@ -65,159 +63,137 @@ canvas {
         inset 0 0 20px rgba(0,255,255,0.2);
 }
 
-/* CONTENT ABOVE BACKGROUND */
+/* RADAR COLORS */
+.radar.high::before {
+    background: conic-gradient(rgba(255,0,0,0.5), transparent);
+}
+
+.radar.medium::before {
+    background: conic-gradient(rgba(255,165,0,0.5), transparent);
+}
+
+/* BLIPS */
+#radar-blips {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 500px;
+    height: 500px;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+    pointer-events: none;
+}
+
+.blip {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+}
+
+.blip.low { background:#22c55e; box-shadow:0 0 10px #22c55e; }
+.blip.medium { background:#f59e0b; box-shadow:0 0 10px #f59e0b; }
+.blip.high { background:#ef4444; box-shadow:0 0 15px #ef4444; }
+
+/* CONTENT */
 .header, .grid, .card {
     position: relative;
-    z-index: 1;
+    z-index: 2;
 }
 
 /* HEADER */
 .header {
-    padding: 20px;
     text-align: center;
+    padding: 20px;
     font-size: 24px;
-    letter-spacing: 2px;
     text-shadow: 0 0 10px #0ff;
 }
 
 /* GRID */
 .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(250px,1fr));
     gap: 15px;
     padding: 20px;
 }
 
-/* CARDS */
+/* CARD */
 .card {
-    background: rgba(15, 23, 42, 0.85);
-    border-radius: 12px;
+    background: rgba(15,23,42,0.75);
     padding: 15px;
-    box-shadow: 0 0 20px rgba(0,255,255,0.15);
-    backdrop-filter: blur(8px);
-    animation: fadeIn 0.6s ease;
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 0 20px rgba(0,255,255,0.1);
 }
 
-/* STATS */
-.stat {
-    font-size: 28px;
-    font-weight: bold;
-}
-
-.label {
-    font-size: 12px;
-    opacity: 0.7;
-}
-
-/* LOGS */
+/* LOG */
 .log {
     font-size: 13px;
-    padding: 6px 0;
     border-bottom: 1px solid #1e293b;
+    padding: 6px 0;
 }
 
-.safe { color: #22c55e; }
-.attack { color: #ef4444; }
-
-/* ALERT BADGES */
-.badge {
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-size: 11px;
-}
-
-.low { background: #22c55e; }
-.medium { background: #f59e0b; }
-.high { background: #ef4444; }
+.safe { color:#22c55e; }
+.attack { color:#ef4444; }
 
 /* ANIMATIONS */
-@keyframes fadeIn {
-    from {opacity:0; transform:translateY(10px);}
-    to {opacity:1; transform:translateY(0);}
+@keyframes sweep {
+    from {transform: rotate(0deg);}
+    to {transform: rotate(360deg);}
 }
 
-@keyframes sweep {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+@keyframes pulse {
+    0% {transform:scale(0.6);opacity:0.6;}
+    50% {transform:scale(1.6);opacity:1;}
+    100% {transform:scale(0.6);opacity:0.6;}
 }
 </style>
 </head>
 
 <body>
 
-<!-- MATRIX -->
 <canvas id="matrix"></canvas>
-
-<!-- RADAR -->
 <div class="radar"></div>
+<div id="radar-blips"></div>
 
 <div class="header">
 🚀 Rothschild NIDS — SOC Dashboard
 </div>
 
-<!-- STATS -->
 <div class="grid">
     <div class="card">
-        <div class="stat">{{ stats.total if stats.total else 0 }}</div>
-        <div class="label">Total Traffic</div>
+        <h3>Total Traffic</h3>
+        <div>{{ stats.total or 0 }}</div>
     </div>
-
     <div class="card">
-        <div class="stat">{{ stats.attacks if stats.attacks else 0 }}</div>
-        <div class="label">Detected Attacks</div>
-    </div>
-
-    <div class="card">
-        <div class="stat">{{ stats.normal if stats.normal else 0 }}</div>
-        <div class="label">Normal Traffic</div>
-    </div>
-
-    <div class="card">
-        <div class="stat">{{ stats.high if stats.high else 0 }}</div>
-        <div class="label">High Severity</div>
+        <h3>Attacks</h3>
+        <div>{{ stats.attacks or 0 }}</div>
     </div>
 </div>
 
-<!-- ALERTS + LOGS -->
 <div class="grid">
     <div class="card">
-        <h3>🚨 Recent Alerts</h3>
-
+        <h3>🚨 Alerts</h3>
         {% for alert in alerts %}
-            <div class="log">
-                <span class="badge {{ alert.severity|lower }}">
-                    {{ alert.severity }}
-                </span>
-                <strong>{{ alert.attack_type }}</strong>
-                ({{ alert.confidence }}%)
-                <br>
-                <small>{{ alert.timestamp }}</small>
-            </div>
-        {% else %}
-            <p>No alerts</p>
+        <div class="log">
+            {{ alert.attack_type }} ({{ alert.severity }})
+        </div>
         {% endfor %}
     </div>
 
     <div class="card">
-        <h3>📡 Network Logs</h3>
-
+        <h3>📡 Logs</h3>
         {% for log in logs %}
-            <div class="log">
-                <span class="{% if log.attack_type == 'normal' %}safe{% else %}attack{% endif %}">
-                    {{ log.attack_type }}
-                </span>
-                ({{ log.confidence }}%)
-                <br>
-                <small>{{ log.timestamp }}</small>
-            </div>
-        {% else %}
-            <p>No logs</p>
+        <div class="log">
+            {{ log.attack_type }}
+        </div>
         {% endfor %}
     </div>
 </div>
 
 <script>
-// MATRIX EFFECT
+/* MATRIX */
 const canvas = document.getElementById("matrix");
 const ctx = canvas.getContext("2d");
 
@@ -227,29 +203,55 @@ canvas.width = window.innerWidth;
 const letters = "01";
 const fontSize = 14;
 const columns = canvas.width / fontSize;
+const drops = Array(Math.floor(columns)).fill(1);
 
-const drops = [];
-for (let x = 0; x < columns; x++) drops[x] = 1;
+function draw(){
+    ctx.fillStyle="rgba(0,0,0,0.05)";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle="#0ff";
+    ctx.font=fontSize+"px monospace";
 
-function draw() {
-    ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    for(let i=0;i<drops.length;i++){
+        const text=letters[Math.floor(Math.random()*letters.length)];
+        ctx.fillText(text,i*fontSize,drops[i]*fontSize);
 
-    ctx.fillStyle = "#0ff";
-    ctx.font = fontSize + "px monospace";
-
-    for (let i = 0; i < drops.length; i++) {
-        const text = letters.charAt(Math.floor(Math.random() * letters.length));
-        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.95)
-            drops[i] = 0;
+        if(drops[i]*fontSize>canvas.height && Math.random()>0.95)
+            drops[i]=0;
 
         drops[i]++;
     }
 }
+setInterval(draw,50);
 
-setInterval(draw, 50);
+/* ALERT DATA */
+const alertsData = {{ alerts | tojson }};
+
+/* RADAR LOGIC */
+const radar = document.getElementById("radar-blips");
+const radarElement = document.querySelector(".radar");
+
+alertsData.forEach(alert=>{
+    const blip=document.createElement("div");
+    blip.classList.add("blip", alert.severity.toLowerCase());
+
+    const angle=Math.random()*2*Math.PI;
+    const radius=Math.random()*220;
+
+    const x=250+radius*Math.cos(angle);
+    const y=250+radius*Math.sin(angle);
+
+    blip.style.left=x+"px";
+    blip.style.top=y+"px";
+
+    radar.appendChild(blip);
+});
+
+/* RADAR COLOR */
+if(alertsData.some(a=>a.severity==="HIGH")){
+    radarElement.classList.add("high");
+}else if(alertsData.some(a=>a.severity==="MEDIUM")){
+    radarElement.classList.add("medium");
+}
 </script>
 
 </body>
