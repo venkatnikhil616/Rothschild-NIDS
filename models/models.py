@@ -12,18 +12,18 @@ class Log(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    protocol_type = Column(String)
-    service = Column(String)
-    flag = Column(String)
+    protocol_type = Column(String, nullable=True)
+    service = Column(String, nullable=True)
+    flag = Column(String, nullable=True)
 
-    src_bytes = Column(Integer)
-    dst_bytes = Column(Integer)
+    src_bytes = Column(Integer, default=0)
+    dst_bytes = Column(Integer, default=0)
 
-    attack_type = Column(String)
-    confidence = Column(Float)
-    severity = Column(String)
+    attack_type = Column(String, default="normal")
+    confidence = Column(Float, default=0.0)
+    severity = Column(String, default="low")
 
-    event_type = Column(String)
+    event_type = Column(String, default="network")
 
     timestamp = Column(DateTime, default=datetime.utcnow)
 
@@ -36,19 +36,30 @@ class Alert(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    attack_type = Column(String)
-    severity = Column(String)
-    message = Column(String)
+    attack_type = Column(String, nullable=False)
+    severity = Column(String, nullable=False)
+    message = Column(String, nullable=True)
 
     timestamp = Column(DateTime, default=datetime.utcnow)
 
 
 # ---------------------------
-# USER MODEL ✅ FIXED
+# USER MODEL
 # ---------------------------
 class User(Base, UserMixin):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, nullable=False)
-    password = Column(String, nullable=False)
+
+    username = Column(String(100), unique=True, nullable=False, index=True)
+    password = Column(String(255), nullable=False)
+
+    # Flask-Login requires this sometimes explicitly
+    def get_id(self):
+        return str(self.id)
+
+
+# ---------------------------
+# DEBUG (VERY IMPORTANT)
+# ---------------------------
+print("✅ models.py loaded successfully (User available)")
