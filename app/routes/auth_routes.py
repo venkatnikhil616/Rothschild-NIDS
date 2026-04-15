@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for
+from flask import Blueprint, render_template, request, redirect
 from flask_login import login_user, logout_user, login_required
 from database.db import SessionLocal
 from database.models import User
@@ -6,17 +6,29 @@ from werkzeug.security import check_password_hash
 
 auth_bp = Blueprint("auth", __name__)
 
+
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
-    if request.method == "POST":
-        db = SessionLocal()
-        user = db.query(User).filter(User.username == request.form["username"]).first()
+    error = None
+    db = SessionLocal()
 
-        if user and check_password_hash(user.password, request.form["password"]):
-            login_user(user)
-            return redirect("/dashboard/")
+    try:
+        if request.method == "POST":
+            username = request.form.get("username")
+            password = request.form.get("password")
 
-    return render_template("login.html")
+            user = db.query(User).filter(User.username == username).first()
+
+            if user and check_password_hash(user.password, password):
+                login_user(user)
+                return redirect("/dashboard/")
+            else:
+                error = "❌ Invalid username or password"
+
+        return render_template("login.html", error=error)
+
+    finally:
+        db.close()
 
 
 @auth_bp.route("/logout")
