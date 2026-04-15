@@ -1,86 +1,68 @@
 import os
 import pickle
 import pandas as pd
-import numpy as np                                      
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, StandardScaler                                             
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, accuracy_score
-                                  
-# PATHS
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))                                       
-DATA_PATH = os.path.join(BASE_DIR, "data", "raw", "nsl_kdd.csv")
-PROCESSED_PATH = os.path.join(BASE_DIR, "data", "processed", "cleaned_data.csv")
-MODEL_DIR = os.path.join(BASE_DIR, "models")
+# ---------------------------
+# PATHS ✅ FIXED
+# ---------------------------
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_PATH = os.path.join(BASE_DIR, "dataset.csv")   # ✅ your current dataset
+MODEL_DIR = BASE_DIR
 
 MODEL_PATH = os.path.join(MODEL_DIR, "model.pkl")
 SCALER_PATH = os.path.join(MODEL_DIR, "scaler.pkl")
 ENCODER_PATH = os.path.join(MODEL_DIR, "encoder.pkl")
 
-# FEATURE COLUMNS
-
-FEATURE_COLUMNS = [
-    "duration", "protocol_type", "service", "flag", "src_bytes", "dst_bytes",
-    "wrong_fragment", "urgent", "hot", "num_failed_logins", "logged_in",
-    "num_compromised", "root_shell", "su_attempted", "num_root",
-    "num_file_creations", "num_shells", "num_access_files", "num_outbound_cmds",
-    "is_host_login", "is_guest_login", "count", "srv_count",
-    "serror_rate", "srv_serror_rate", "rerror_rate", "srv_rerror_rate",
-    "same_srv_rate", "diff_srv_rate", "srv_diff_host_rate"
-]
-
-TARGET_COLUMN = "label"
-
+# ---------------------------
 # LOAD DATA
+# ---------------------------
 
 def load_data():
     if not os.path.exists(DATA_PATH):
-        raise FileNotFoundError("❌ Dataset not found at data/raw/nsl_kdd.csv")
+        raise FileNotFoundError(f"❌ Dataset not found at {DATA_PATH}")
+
+    print("Reading from:", DATA_PATH)
 
     df = pd.read_csv(DATA_PATH)
 
-    if TARGET_COLUMN not in df.columns:
-        raise ValueError("❌ Dataset must contain 'label' column")
+    if df.empty:
+        raise ValueError("❌ Dataset is empty")
 
-    print(f" Dataset loaded: {df.shape[0]} rows")
+    print(f"✅ Dataset loaded: {df.shape[0]} rows")
 
     return df
 
 
-# VALIDATE COLUMNS
+# ---------------------------
+# PREPROCESS
+# ---------------------------
 
-def validate_columns(df):
-    missing = [col for col in FEATURE_COLUMNS if col not in df.columns]
-
-    if missing:
-        raise ValueError(f"❌ Missing columns: {missing}")
-
-    print(" All required columns present")
-
-
-# PREPROCESS DATA
-
-def preprocess(df: pd.DataFrame):
+def preprocess(df):
     df = df.copy()
+
+    # Rename target if needed
+    if "attack_type" in df.columns:
+        df.rename(columns={"attack_type": "label"}, inplace=True)
+
+    if "label" not in df.columns:
+        raise ValueError("❌ Dataset must contain 'label' or 'attack_type'")
 
     # Fill missing
     df.fillna(0, inplace=True)
 
-    # Encode categorical safely
-    df["protocol_type"] = df["protocol_type"].astype(str).astype("category").cat.codes
-    df["service"] = df["service"].astype(str).astype("category").cat.codes
-    df["flag"] = df["flag"].astype(str).astype("category").cat.codes
+    # Encode categorical columns (safe)
+    for col in ["protocol_type", "service", "flag"]:
+        if col in df.columns:
+            df[col] = df[col].astype(str).astype("category").cat.codes
 
-    # Validate columns
-    validate_columns(df)
-
-    # Save cleaned dataset
-    save_processed_data(df)
-
-    # Split features/target
-    X = df[FEATURE_COLUMNS]
-    y = df[TARGET_COLUMN]
+    # Split
+    X = df.drop(columns=["label"])
+    y = df["label"]
 
     # Encode labels
     label_encoder = LabelEncoder()
@@ -89,56 +71,43 @@ def preprocess(df: pd.DataFrame):
     return X, y_encoded, label_encoder
 
 
-# SAVE PROCESSED DATA
-
-def save_processed_data(df):
-    os.makedirs(os.path.dirname(PROCESSED_PATH), exist_ok=True)
-    df.to_csv(PROCESSED_PATH, index=False)
-    print(f" Cleaned dataset saved at: {PROCESSED_PATH}")
-
-
+# ---------------------------
 # TRAIN MODEL
+# ---------------------------
 
 def train_model():
-    print(" Loading dataset...")
+    print("📥 Loading dataset...")
     df = load_data()
 
     print("⚙️ Preprocessing...")
     X, y, encoder = preprocess(df)
 
-    print(" Splitting data...")
+    print("🔀 Splitting data...")
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
+        X, y, test_size=0.3, random_state=42
     )
 
-    print(" Scaling features...")
+    print("📏 Scaling...")
     scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.transform(X_test)
 
-    print(" Training model...")
+    print("🤖 Training model...")
     model = RandomForestClassifier(
-        n_estimators=150,
-        max_depth=25,
-        random_state=42,
-        n_jobs=-1
+        n_estimators=100,
+        random_state=42
     )
 
-    model.fit(X_train_scaled, y_train)
+    model.fit(X_train, y_train)
 
-    print(" Evaluating model...")
-    y_pred = model.predict(X_test_scaled)
+    print("📊 Evaluating...")
+    y_pred = model.predict(X_test)
 
-    acc = accuracy_score(y_test, y_pred)
-    print(f"\n Accuracy: {acc:.4f}")
-    print("\n Classification Report:\n")
-    print(classification_report(y_test, y_pred))
+    print("\nAccuracy:", accuracy_score(y_test, y_pred))
+    print("\nReport:\n", classification_report(y_test, y_pred))
 
-    # Save artifacts
-    os.makedirs(MODEL_DIR, exist_ok=True)
-
-    print(" Saving model artifacts...")
-
+    # Save
+    print("💾 Saving model...")
     with open(MODEL_PATH, "wb") as f:
         pickle.dump(model, f)
 
@@ -148,13 +117,13 @@ def train_model():
     with open(ENCODER_PATH, "wb") as f:
         pickle.dump(encoder, f)
 
-    print("\n Training completed successfully!")
-    print(" Files saved:")
-    print("   - model.pkl")
-    print("   - scaler.pkl")
-    print("   - encoder.pkl")
+    print("\n✅ DONE — Model Ready!")
+    print("📁 Saved in:", MODEL_DIR)
 
+
+# ---------------------------
 # RUN
+# ---------------------------
 
 if __name__ == "__main__":
     train_model()
