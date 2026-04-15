@@ -1,9 +1,10 @@
 from typing import Dict, Any
 from datetime import datetime
-from detection.preprocessor import preprocess
-from app.services.detection_service import DetectionService                                                    
+
+from detection.preprocessor import preprocess_input 
+from app.services.detection_service import DetectionService
 from app.services.alert_service import AlertService
-from app.services.logging_service import log_event
+from database.crud import insert_log  
 
 
 class StreamProcessor:
@@ -15,83 +16,89 @@ class StreamProcessor:
         self.detector = DetectionService()
         self.alert_service = AlertService()
 
+    # =========================
     # PROCESS SINGLE EVENT
-    
+    # =========================
     def process_event(self, event: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Full pipeline for one network event
-        """
 
         try:
-    
+            # -------------------------
             # PREPROCESS INPUT
-
+            # -------------------------
             clean_data = preprocess_input(event)
 
+            # -------------------------
             # DETECTION
+            # -------------------------
+            result = self.detector.detect(clean_data)   # ✅ FIXED (detect, not predict)
 
-            result = self.detector.predict(clean_data)
+            prediction = result.get("prediction", "unknown")
+            confidence = result.get("confidence", 0)
 
-            # ADD METADATA
-    
-            result["timestamp"] = datetime.utcnow().isoformat()
+            timestamp = datetime.utcnow()
 
-            # LOG EVENT
+            # -------------------------
+            # STORE LOG (FIXED)
+            # -------------------------
+            insert_log({
+                "protocol_type": clean_data.get("protocol_type"),
+                "service": clean_data.get("service"),
+                "flag": clean_data.get("flag"),
+                "src_bytes": clean_data.get("src_bytes"),
+                "dst_bytes": clean_data.get("dst_bytes"),
 
-            log_event(
-                event_type="network_traffic",
-                data=clean_data,
-                result=result
-            )
+                "attack_type": prediction,
+                "confidence": confidence,
+                "severity": "HIGH" if prediction != "normal" else "LOW",
+                "event_type": "network",
+                "timestamp": timestamp
+            })
 
+            # -------------------------
             # ALERT GENERATION
-    
-            if self._is_threat(result):
-                self.alert_service.trigger_alert(result)
+            # -------------------------
+            if self._is_threat(prediction):
+                self.alert_service.trigger_alert({
+                    "attack_type": prediction,
+                    "severity": "HIGH",
+                    "message": "Intrusion detected",
+                    "timestamp": timestamp
+                })
 
-            return result
+            # -------------------------
+            # FINAL RESPONSE
+            # -------------------------
+            return {
+                "attack_type": prediction,
+                "confidence": confidence,
+                "timestamp": timestamp.isoformat()
+            }
 
         except Exception as e:
-            error_result = {
+            return {
                 "error": str(e),
                 "timestamp": datetime.utcnow().isoformat()
             }
 
-            # Log error
-            log_event(
-                event_type="processing_error",
-                data=event,
-                result=error_result
-            )
-
-            return error_result
-
+    # =========================
     # THREAT CHECK
-  
-    def _is_threat(self, result: Dict[str, Any]) -> bool:
-        """
-        Decide whether this is an attack
-        """
-        label = str(result.get("attack_type", "")).lower()
+    # =========================
+    def _is_threat(self, prediction: str) -> bool:
+        return str(prediction).lower() != "normal"
 
-        return label != "normal"
-
+    # =========================
     # STREAM HANDLER
-
+    # =========================
     def handle_stream(self, event_stream):
-        """
-        Process continuous stream (generator)
-        """
         print("📡 Stream processing started...")
 
         for event in event_stream:
             result = self.process_event(event)
-
-            # Optional: print or push to dashboard
             self._print_result(result)
 
-    # OUTPUT (DEBUG / MONITORING)
-  
+    # =========================
+    # OUTPUT (DEBUG)
+    # =========================
     def _print_result(self, result):
         if "error" in result:
             print(f" Error: {result['error']}")
@@ -101,4 +108,4 @@ class StreamProcessor:
             f"[{result['timestamp']}] "
             f"Attack: {result.get('attack_type')} | "
             f"Confidence: {result.get('confidence')}%"
-                     )
+        )
