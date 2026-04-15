@@ -1,4 +1,3 @@
-from sqlalchemy.orm import Session
 from sqlalchemy import func
 from database.models import Log, Alert
 from database.db import SessionLocal
@@ -10,7 +9,11 @@ from database.db import SessionLocal
 def insert_log(data: dict):
     session = SessionLocal()
     try:
-        log = Log(**data)
+        # 🔒 Filter only valid columns
+        allowed_fields = {c.name for c in Log.__table__.columns}
+        filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
+
+        log = Log(**filtered_data)
         session.add(log)
         session.commit()
         session.refresh(log)
@@ -26,12 +29,15 @@ def insert_log(data: dict):
 
 
 # =========================
-# INSERT ALERT (NEW)
+# INSERT ALERT
 # =========================
 def insert_alert(data: dict):
     session = SessionLocal()
     try:
-        alert = Alert(**data)
+        allowed_fields = {c.name for c in Alert.__table__.columns}
+        filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
+
+        alert = Alert(**filtered_data)
         session.add(alert)
         session.commit()
         session.refresh(alert)
@@ -58,7 +64,7 @@ def get_recent_logs(limit: int = 20):
             .limit(limit)
             .all()
         )
-        return logs
+        return logs or []
 
     except Exception as e:
         print(f"Error fetching logs: {e}")
@@ -69,7 +75,7 @@ def get_recent_logs(limit: int = 20):
 
 
 # =========================
-# GET RECENT ALERTS (FIXED)
+# GET RECENT ALERTS
 # =========================
 def get_recent_alerts(limit: int = 20):
     session = SessionLocal()
@@ -80,7 +86,7 @@ def get_recent_alerts(limit: int = 20):
             .limit(limit)
             .all()
         )
-        return alerts
+        return alerts or []
 
     except Exception as e:
         print(f"Error fetching alerts: {e}")
@@ -91,7 +97,7 @@ def get_recent_alerts(limit: int = 20):
 
 
 # =========================
-# GET ATTACK STATS (ENHANCED)
+# GET ATTACK STATS (FINAL)
 # =========================
 def get_attack_stats():
     session = SessionLocal()
@@ -102,12 +108,12 @@ def get_attack_stats():
             .all()
         )
 
+        # Convert to dict
         result = {attack: count for attack, count in stats}
 
-        # ✅ ADD SUMMARY FOR DASHBOARD
         total = sum(result.values())
-        attacks = sum(v for k, v in result.items() if k != "normal")
         normal = result.get("normal", 0)
+        attacks = total - normal
 
         return {
             "total": total,
