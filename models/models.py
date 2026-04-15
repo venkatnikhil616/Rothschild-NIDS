@@ -1,7 +1,15 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime
-from datetime import datetime
-from flask_login import UserMixin
-from database.db import Base
+# ---------------------------
+# SAFE IMPORTS (WITH DEBUG)
+# ---------------------------
+try:
+    from sqlalchemy import Column, Integer, String, Float, DateTime
+    from datetime import datetime
+    from flask_login import UserMixin
+    from database.db import Base
+    print("✅ Imports loaded successfully in models.py")
+except Exception as e:
+    print(f"❌ Import error in models.py: {e}")
+    raise
 
 
 # ---------------------------
@@ -44,7 +52,7 @@ class Alert(Base):
 
 
 # ---------------------------
-# USER MODEL
+# USER MODEL (CRITICAL)
 # ---------------------------
 class User(Base, UserMixin):
     __tablename__ = "users"
@@ -54,12 +62,11 @@ class User(Base, UserMixin):
     username = Column(String(100), unique=True, nullable=False, index=True)
     password = Column(String(255), nullable=False)
 
-    # Flask-Login requires this sometimes explicitly
     def get_id(self):
         return str(self.id)
 
 
 # ---------------------------
-# DEBUG (VERY IMPORTANT)
+# DEBUG CONFIRMATION
 # ---------------------------
-print("✅ models.py loaded successfully (User available)")
+print("🔥 models.py fully loaded — User class is available")
