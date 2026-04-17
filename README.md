@@ -55,7 +55,7 @@ Rothschild-NIDS/
 
 1. Clone the repository
 
-git clone 
+git clone https://github.com/venkatnikhil616/Rothschild-NIDS.git
 cd Rothschild-NIDS
 
 ---
